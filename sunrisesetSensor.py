@@ -2,7 +2,8 @@
 
 import psycopg2
 from sensorStateClass import sensorState
-from datetime import datetime, timedelta
+from settings import settingsClass
+from datetime import datetime
 
 conn = psycopg2.connect(host='localhost', dbname='tank', user='tank', password='skinner2')
 conn.autocommit = True
@@ -17,6 +18,7 @@ def getRowCount(sql):
 
 def main():
     mySensorState = sensorState()
+    mySettings = settingsClass()
     
     sql = "SELECT * FROM public.\"sunrisesetLatestDetail\";"
     cur.execute(sql)
@@ -27,18 +29,19 @@ def main():
         sunrise = row[2]
         sunset = row[3]
         
-        irrigationPeriod = 5
+        irrigationPeriod = mySettings.settings["pumpduration"]
         isTimeToIrrigate = 0
         
         nowStartTime = datetime.now()
-        nowEndTime = (datetime.now() + timedelta(minutes = irrigationPeriod))
-        
         nowStartInt = (nowStartTime.hour * 60) + nowStartTime.minute
-        nowEndInt = (nowEndTime.hour * 60) + nowEndTime.minute
-        nowSunrise = (sunrise.hour * 60) + sunrise.minute
-        nowSunset = (sunset.hour * 60) + sunset.minute
+
+        nowSunriseStart = (sunrise.hour * 60) + sunrise.minute
+        nowSunriseEnd = (sunrise.hour * 60) + sunrise.minute + irrigationPeriod
         
-        if nowSunrise > nowStartInt and nowSunrise < nowEndInt:
+        nowSunsetStart = (sunset.hour * 60) + sunset.minute
+        nowSunsetEnd = (sunset.hour * 60) + sunset.minute + irrigationPeriod
+        
+        if nowSunriseStart <= nowStartInt <= nowSunriseEnd:
             isTimeToIrrigate = 1
         else:
             isTimeToIrrigate = 0
@@ -48,7 +51,7 @@ def main():
         mySensorState.setSensorValue(isTimeToIrrigate)
         mySensorState.setSatus()
     
-        if nowSunset > nowStartInt and nowSunset < nowEndInt:
+        if nowSunsetStart <= nowStartInt <= nowSunsetEnd:
             isTimeToIrrigate = 1
         else:
             isTimeToIrrigate = 0
